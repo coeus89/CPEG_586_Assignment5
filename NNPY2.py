@@ -35,19 +35,20 @@ def main():
 
     numLayers = [50,10]
     dropOut = 1.0 #20% dropout
-    lropt = LROptimizerType.ADAM
     hiddinActivation = ActivationType.SIGMOID
     LLActivation = ActivationType.SOFTMAX
-    myNetwork = Network(trainX,trainY,numLayers,dropOut,hiddinActivation,LLActivation,lropt)
 
-    epochs = 10
+    myNetwork = Network(trainX,trainY,numLayers,dropOut,hiddinActivation,LLActivation)
+
+    epochs = 50
     learningRate = 0.1  
     lambda1 = 0. #don't use. not sure why it's there.
     trainType = GradDescType.MiniBatch
     batchSize = 20
     doBatchNorm = True
-    
-    myNetwork.Train(epochs,learningRate,lambda1,trainType,batchSize,doBatchNorm)
+    lropt = LROptimizerType.ADAM
+
+    myNetwork.Train(epochs,learningRate,lambda1,trainType,batchSize,doBatchNorm,lropt)
 
     print("Finished Training. \nTesting Begins")
 

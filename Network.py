@@ -5,8 +5,7 @@ from MyEnums import *
 from sklearn.utils import shuffle
 
 class Network(object):
-    def __init__(self,X,Y,numLayers,dropout = 1.0, activationFunction = ActivationType.SIGMOID, lastLayerAF = ActivationType.SOFTMAX, \
-        lrOptomizer = LROptimizerType.ADAM):
+    def __init__(self,X,Y,numLayers,dropout = 1.0, activationFunction = ActivationType.SIGMOID, lastLayerAF = ActivationType.SOFTMAX):
         self.X = X
         self.Y = Y
         self.numLayers = numLayers # array in the form [50, 10] for 2 layers of 50 and 10 neurons
@@ -14,7 +13,7 @@ class Network(object):
         self.activationFunction = activationFunction
         self.lastLayerAF = lastLayerAF
         self.Layers = []
-        self.LROptimizer = LROptimizerType
+        #self.LROptimizer = LROptimizerType
         #self.EnableBatchNorm = enableBatchNorm
         self.numOfLayers = len(numLayers)
         for i in range(self.numOfLayers):
@@ -41,7 +40,6 @@ class Network(object):
                 layer.CalcDeltaLL(batch_y, batchSize, doBatchNorm, batchType) #last layer
         else:
             layer.CalcDelta(self.Layers[layerNumber + 1].deltabn, self.Layers[layerNumber + 1].w, batchSize, doBatchNorm, batchType)
-
             
     def Train(self,Epochs,LearningRate,lambda1,trainType,batchSize=1,doBatchNorm = False,lroptimization = LROptimizerType.NONE):
 

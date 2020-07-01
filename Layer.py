@@ -150,7 +150,7 @@ class Layer(object):
     def CalcBatchBackProp(self,batchSize,doBatchNorm,batchType):
         self.dgamma = np.sum(self.delta * self.sihat,axis=0)
         self.dbeta = np.sum(self.delta,axis=0)
-        self.deltabn = (self.delta * self.gamma / (batchSize * np.sqrt(self.BatchVariance + Layer.Epsillon))) * (batchSize - 1 - (self.sihat * self.sihat))
+        self.deltabn = (self.delta * self.gamma) / (batchSize * np.sqrt(self.BatchVariance + Layer.Epsillon)) * (batchSize - 1 - (self.sihat * self.sihat))
 
     def CalcGradients(self,prevOut):
         self.gradw = np.dot(self.deltabn.T,prevOut)
