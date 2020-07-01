@@ -50,7 +50,7 @@ class Layer(object):
                 self.BatchMean = self.runningMean
                 self.BatchVariance = self.runningVariance
 
-            self.sihat = (self.si - self.BatchMean) / ((self.BatchVariance + Layer.Epsillon)**0.5)
+            self.sihat = (self.si - self.BatchMean) / (np.sqrt(self.BatchVariance + Layer.Epsillon))
             self.sb = self.sihat * self.gamma + self.beta
         else:
             self.sb = self.si
@@ -63,7 +63,9 @@ class Layer(object):
             self.derivAF = (1 - self.a ** 2)
         if (self.activationType == ActivationType.RELU):
             self.a = self.Relu(self.sb)
-            self.derivAF = 1.0 * (self.a > 0)
+            #self.derivAF = 1.0 * (self.a > 0)
+            self.derivAF = 1. * (self.a > Layer.Epsillon)
+            self.derivAF[self.derivAF == 0] = Layer.Epsillon
         if (self.activationType == ActivationType.SOFTMAX):
             self.a = self.Softmax(self.sb)
             self.derivAF = None # we do delta computation in Network layer
@@ -147,7 +149,7 @@ class Layer(object):
             
     def CalcBatchBackProp(self,batchSize,doBatchNorm,batchType):
         self.dgamma = np.sum(self.delta * self.sihat,axis=0)
-        self.dbeta = np.sum(self.deltabn,axis=0)
+        self.dbeta = np.sum(self.delta,axis=0)
         self.deltabn = (self.delta * self.gamma / (batchSize * np.sqrt(self.BatchVariance + Layer.Epsillon))) * (batchSize - 1 - (self.sihat * self.sihat))
 
     def CalcGradients(self,prevOut):

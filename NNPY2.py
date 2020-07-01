@@ -33,20 +33,21 @@ def main():
     trainX = train.reshape(train.shape[0],train.shape[1]*train.shape[2])
     testX = test.reshape(test.shape[0],test.shape[1]*test.shape[2])
 
-    numLayers = [100,10]
+    numLayers = [50,10]
     dropOut = 1.0 #20% dropout
-    LROptType = LROptimizerType.ADAM
-
-    myNetwork = Network(trainX,trainY,numLayers,dropOut,ActivationType.SIGMOID,ActivationType.SOFTMAX,LROptimizerType.ADAM,BatchNormEnabled.Enabled)
+    lropt = LROptimizerType.ADAM
+    hiddinActivation = ActivationType.SIGMOID
+    LLActivation = ActivationType.SOFTMAX
+    myNetwork = Network(trainX,trainY,numLayers,dropOut,hiddinActivation,LLActivation,lropt)
 
     epochs = 10
-    learningRate = 0.01  
+    learningRate = 0.1  
     lambda1 = 0. #don't use. not sure why it's there.
     trainType = GradDescType.MiniBatch
-    batchSize = 5
+    batchSize = 20
     doBatchNorm = True
-    lropt = LROptimizerType.NONE
-    myNetwork.Train(epochs,learningRate,lambda1,trainType,batchSize,doBatchNorm,lropt)
+    
+    myNetwork.Train(epochs,learningRate,lambda1,trainType,batchSize,doBatchNorm)
 
     print("Finished Training. \nTesting Begins")
 

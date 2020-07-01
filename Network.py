@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 
 class Network(object):
     def __init__(self,X,Y,numLayers,dropout = 1.0, activationFunction = ActivationType.SIGMOID, lastLayerAF = ActivationType.SOFTMAX, \
-        lrOptomizer = LROptimizerType.ADAM, enableBatchNorm = BatchNormEnabled.Disabled):
+        lrOptomizer = LROptimizerType.ADAM):
         self.X = X
         self.Y = Y
         self.numLayers = numLayers # array in the form [50, 10] for 2 layers of 50 and 10 neurons
@@ -26,7 +26,7 @@ class Network(object):
                 layer = Layer(self.numLayers[i],self.numLayers[i-1], False,dropout,self.activationFunction)
             self.Layers.append(layer)
     
-    def Evaluate(self,batch,doBatchNorm,batchType=BatchNormMode.TEST):
+    def Evaluate(self,batch,doBatchNorm=False,batchType=BatchNormMode.TEST):
         self.Layers[0].Evaluate(batch,doBatchNorm,batchType)
         for i in range(1,self.numOfLayers):
             self.Layers[i].Evaluate(self.Layers[i-1].a,doBatchNorm,batchType)
