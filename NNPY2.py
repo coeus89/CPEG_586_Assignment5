@@ -33,7 +33,9 @@ def main():
     trainX = train.reshape(train.shape[0],train.shape[1]*train.shape[2])
     testX = test.reshape(test.shape[0],test.shape[1]*test.shape[2])
 
-    numLayers = [50,10]
+    numCNNLayers = [4,6] # Number of deep cnn layers & neurons
+    numLayers = [50,10] # Number of classification layers & neurons
+
     dropOut = 1.0 #20% dropout
     hiddinActivation = ActivationType.SIGMOID
     LLActivation = ActivationType.SOFTMAX
@@ -41,7 +43,7 @@ def main():
     myNetwork = Network(trainX,trainY,numLayers,dropOut,hiddinActivation,LLActivation)
 
     epochs = 50
-    learningRate = 0.1  
+    learningRate = 0.01  
     lambda1 = 0. #don't use. not sure why it's there.
     trainType = GradDescType.MiniBatch
     batchSize = 20
