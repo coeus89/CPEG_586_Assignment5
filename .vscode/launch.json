@@ -8,8 +8,9 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "S:\\Users\\Jkara\\OneDrive\\Documents\\CPEG_586\\Assignments_Workspace\\CPEG_586_Assignment5\\NNPY2.py",
+            "program": "S:\\Users\\Jkara\\OneDrive\\Documents\\CPEG_586\\Assignments_Workspace\\CPEG_586_Assignment5_B\\Test.py",
             "console": "integratedTerminal"
+            //"console": "externalTerminal"
         }
     ]
 }

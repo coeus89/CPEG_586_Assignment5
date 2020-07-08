@@ -46,7 +46,8 @@ class Network(object):
         for ep in range(0,Epochs):
             loss = 0
             itnum = 0
-            self.X, self.Y = shuffle(self.X,self.Y,random_state=0)
+            # self.X, self.Y = shuffle(self.X, self.Y, random_state=0)
+            shuffle(self.X, self.Y, random_state=0)
 
             for batch_i in range(0, self.X.shape[0], batchSize):
                 batch_x = self.X[batch_i:batch_i + batchSize]
