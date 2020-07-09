@@ -1,9 +1,7 @@
 from FeatureMap import FeatureMap
-import math
 import numpy as np
 from CNNEnums import *
 from Pooling import *
-from sklearn.utils import shuffle
 from scipy.signal import convolve2d
 
 class CNNLayer(object):
@@ -14,21 +12,24 @@ class CNNLayer(object):
         self.numFeatureMaps = numFeatureMaps
         self.numPrevLayerFeatureMaps = numPrevLayerFeatureMaps
         self.ConvolResults = np.empty((batchSize,numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
-        convOutputSize = inputSize - kernelSize + 1
+        self.convOutputSize = inputSize - kernelSize + 1
         for i in range(0,batchSize):
             for j in range(0,numFeatureMaps):
-                self.ConvolSums[i,j] = np.zeros((convOutputSize,convOutputSize))
+                self.ConvolSums[i,j] = np.zeros((self.convOutputSize,self.convOutputSize))
         initRange = (numFeatureMaps/((numPrevLayerFeatureMaps + numFeatureMaps)*(kernelSize**2)))**0.5
         # self.Kernels = numPrevLayerFeatureMaps,numFeatureMaps,kernelSize
         # self.KernelGrads = np.zeros((numPrevLayerFeatureMaps,numFeatureMaps))
         self.Kernels = np.empty((numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
         self.KernelGrads = np.empty((numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
+
+        # I don't think i need to init the 2d matrix for the kernels or the kernel grads
         # self.InitMatrix2DArray(self.Kernels,numPrevLayerFeatureMaps,numFeatureMaps,kernelSize)
         # self.InitMatrix2DArray(self.KernelGrads,numPrevLayerFeatureMaps,numFeatureMaps,kernelSize)
+
         self.InitializeKernels(initRange)
         self.featureMapList = []
         for i in range(0,numFeatureMaps):
-            self.featureMapList.append(FeatureMap(convOutputSize,poolingType,activationType,batchSize))
+            self.featureMapList.append(FeatureMap(self.convOutputSize,poolingType,activationType,batchSize))
 
     def Evaluate(self,PrevLayerOutputList,batchIndex):
         # inputs are from the previous layer (unless first layer)
@@ -41,6 +42,7 @@ class CNNLayer(object):
         for q in range(0,len(self.featureMapList)):
             self.ConvolSums[batchIndex,q] = np.zeros((self.convOutputSize,self.convOutputSize))
             for p in range(0,len(PrevLayerOutputList)):
+                #Sum of all of the convolutions for a given input
                 self.ConvolSums[batchIndex,q] += self.ConvolResults[batchIndex,p,q]
         # Evaluate each feature map
         for i in range(0, len(self.featureMapList)):

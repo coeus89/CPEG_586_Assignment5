@@ -30,8 +30,8 @@ def main():
         test[j] = cv2.imread('C:\\Data\\Test10000\\{0}'.format(filename),0)/255.0 
         j += 1
 
-    trainX = train.reshape(train.shape[0],train.shape[1]*train.shape[2])
-    testX = test.reshape(test.shape[0],test.shape[1]*test.shape[2])
+    trainX = train#.reshape(train.shape[0],train.shape[1]*train.shape[2])
+    testX = test#.reshape(test.shape[0],test.shape[1]*test.shape[2])
 
     numCNNLayers = [4,6] # Number of deep cnn layers & neurons
     numLayers = [50,10] # Number of classification layers & neurons
@@ -39,18 +39,23 @@ def main():
     dropOut = 1.0 #20% dropout
     hiddinActivation = ActivationType.SIGMOID
     LLActivation = ActivationType.SOFTMAX
+    kernelSize = 5
+    poolingType = PoolingType.AVGPOOLING
+    batchSize = 5
 
-    myNetwork = Network(trainX,trainY,numLayers,dropOut,hiddinActivation,LLActivation)
+    myNetwork = Network(trainX,trainY,numCNNLayers,kernelSize,poolingType,numLayers,dropOut,hiddinActivation,LLActivation,batchSize)
 
-    epochs = 50
+    epochs = 4
     learningRate = 0.01  
-    lambda1 = 0. #don't use. not sure why it's there.
-    trainType = GradDescType.MiniBatch
-    batchSize = 20
-    doBatchNorm = True
-    lropt = LROptimizerType.ADAM
-
-    myNetwork.Train(epochs,learningRate,lambda1,trainType,batchSize,doBatchNorm,lropt)
+    #lambda1 = 0. #don't use. not sure why it's there.
+    #trainType = GradDescType.MiniBatch
+    
+    doBatchNorm = False
+    lropt = LROptimizerType.NONE
+    #-------------------For Testing, delete later----------------
+    myNetwork.Evaluate(trainX[0:5].reshape(5,1,28,28))
+    #------------------------------------------------------------
+    myNetwork.Train(epochs,learningRate,doBatchNorm,lropt)
 
     print("Finished Training. \nTesting Begins")
 
