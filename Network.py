@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from numpy.core.defchararray import array
 from Layer import *
 from MyEnums import *
 from CNNLayer import *
@@ -20,6 +21,7 @@ class Network(object):
         self.numOfLayers = len(numLayers)
         self.batchSize = batchSize
         self.NNInputSize = 0
+        self.Flatten = np.zeros((batchSize), dtype=object)
 
         # Initialize the CNN Layers
         for j in range(0,len(numCNNLayers)):
@@ -35,7 +37,11 @@ class Network(object):
         # Initialize the Normal Layers
         for i in range(self.numOfLayers):
             if (i == 0):
-                layer = Layer(self.numLayers[i],self.X.shape[1],False,self.dropout,self.activationFunction)
+                # First NN layer coming from a CNN
+                prevFeatureMapSize = (self.myCNNLayers[len(self.myCNNLayers) - 1].poolOutputSize)**2
+                flattenSize = (prevFeatureMapSize) * self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps
+                # make the layer
+                layer = Layer(self.numLayers[i],flattenSize,False,self.dropout,self.activationFunction)
             elif (i == (self.numOfLayers - 1)):
                 layer = Layer(self.Y.shape[1],self.numLayers[i-1],True,self.dropout,self.lastLayerAF)
             else:
@@ -50,7 +56,8 @@ class Network(object):
     
     def Evaluate(self,batch,doBatchNorm=False,batchType=BatchNormMode.TEST):
         # Evaluate CNN Layers
-        
+        # Note: batch is in format [batchSize,prevFeatureMaps,FeatureMapWidth,FeatureMapHeight]
+        # prevFeatureMaps may just be the single image. so will be 1 on first layer.
         for j in range(0, len(self.numCNNLayers)): # select Layer
             PrevOut = None
             if (j == 0):
@@ -68,11 +75,24 @@ class Network(object):
                 PreviousOutput = PrevOut[batchIndex]
                 self.myCNNLayers[j].Evaluate(PreviousOutput,batchIndex)
         
+        
         # Flatten the output
         # get the Feature Map Output Pools into the format [batch,OutputVectors] which should be a 5 x 6 for a batch size of 5 and a feature map size of 6.
+        featureMapSize = (self.myCNNLayers[len(self.myCNNLayers) - 1].poolOutputSize)**2
+        flattenSize = (featureMapSize) * self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps
+        self.Flatten = np.zeros((self.batchSize,flattenSize))
+        for bIndex in range(0,self.batchSize):
+            flatFM = []
+            for fmIndex in range(0,self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps):
+                fm = self.myCNNLayers[len(self.myCNNLayers) - 1].featureMapList[fmIndex].OutputPool[bIndex]
+                flatFM = np.append(flatFM,fm.reshape(featureMapSize))
+                test = ""
+            self.Flatten[bIndex] = flatFM
+
 
         # Normal NN Layers
-        self.Layers[0].Evaluate(batch,doBatchNorm,batchType)
+        currBatch = self.Flatten
+        self.Layers[0].Evaluate(currBatch,doBatchNorm,batchType)
         for i in range(1,self.numOfLayers):
             self.Layers[i].Evaluate(self.Layers[i-1].a,doBatchNorm,batchType)
         return self.Layers[self.numOfLayers - 1].a
@@ -95,20 +115,13 @@ class Network(object):
             self.X, self.Y = shuffle(self.X, self.Y, random_state=0)
             # shuffle(self.X, self.Y, random_state=0)
 
-            # Evaluate CNN Layers
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            # Evaluate Normal Layers
+            # Evaluate CNN and Normal Layers
             for batch_i in range(0, self.X.shape[0], self.batchSize):
                 batch_x = self.X[batch_i:batch_i + self.batchSize]
                 batch_y = self.Y[batch_i:batch_i + self.batchSize]
+                # Need to add the 1 into the array so that the CNN likes the shape
+                batch_x = batch_x.reshape(batch_x.shape[0],1,batch_x.shape[1],batch_x.shape[2])
+                #batch_y = batch_y.reshape(batch_y.shape[0],1,batch_y.shape[1],batch_y.shape[2])
                 LLa = self.Evaluate(batch_x,doBatchNorm,BatchNormMode.TRAIN) # Last Layer 'a' value
                 
                 if (self.lastLayerAF == ActivationType.SOFTMAX):

@@ -23,5 +23,12 @@ from CNNEnums import *
 #     inputSize = (int)((inputSize - kernelSize + 1)/2)
 #     print(str(inputSize))
 
+Test3 = np.random.uniform(low=0,high=10,size=(4,4))
+print(Test3)
+Test4 = Test3.reshape((16))
+print(Test4)
+Test5 = Test4.reshape(Test3.shape)
+print(Test5)
+
 
 pause = ""

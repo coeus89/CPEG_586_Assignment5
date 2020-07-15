@@ -52,9 +52,9 @@ def main():
     
     doBatchNorm = False
     lropt = LROptimizerType.NONE
-    #-------------------For Testing, delete later----------------
-    myNetwork.Evaluate(trainX[0:5].reshape(5,1,28,28))
-    #------------------------------------------------------------
+    # #-------------------For Testing, delete later----------------
+    # myNetwork.Evaluate(trainX[0:5].reshape(5,1,28,28))
+    # #------------------------------------------------------------
     myNetwork.Train(epochs,learningRate,doBatchNorm,lropt)
 
     print("Finished Training. \nTesting Begins")

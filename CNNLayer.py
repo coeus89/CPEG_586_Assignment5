@@ -13,6 +13,7 @@ class CNNLayer(object):
         self.numPrevLayerFeatureMaps = numPrevLayerFeatureMaps
         self.ConvolResults = np.empty((batchSize,numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
         self.convOutputSize = inputSize - kernelSize + 1
+        self.poolOutputSize = (int)(self.convOutputSize / 2)
         for i in range(0,batchSize):
             for j in range(0,numFeatureMaps):
                 self.ConvolSums[i,j] = np.zeros((self.convOutputSize,self.convOutputSize))
