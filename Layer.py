@@ -40,6 +40,8 @@ class Layer(object):
         self.sihat = np.zeros((numNeurons))
         self.si = np.zeros((numNeurons))
         self.sb = np.zeros((numNeurons))
+        # For Future CNN Back Prop
+        self.deltaFlatten = np.zeros((numNeuronsPrevLayer))
         
     def Evaluate(self,indata,doBatchNorm,bNormMode):
         self.si = np.dot(indata,self.w.T) + self.b
@@ -166,3 +168,7 @@ class Layer(object):
     def UpdateBetaGamma(self,learningRate): #only for batch norm
         self.beta = self.beta - learningRate * self.dbeta
         self.gamma = self.gamma - learningRate * self.dgamma
+    
+    def CalcDeltaFlatten(self):
+        self.deltaFlatten = np.dot(self.deltabn,self.w)
+        return self.deltaFlatten

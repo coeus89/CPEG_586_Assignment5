@@ -19,6 +19,7 @@ class Network(object):
         self.Layers = []
         self.myCNNLayers = []
         self.numOfLayers = len(numLayers)
+        self.numOfCNNLayers = len(numCNNLayers)
         self.batchSize = batchSize
         self.NNInputSize = 0
         self.Flatten = np.zeros((batchSize), dtype=object)
@@ -76,7 +77,7 @@ class Network(object):
                 self.myCNNLayers[j].Evaluate(PreviousOutput,batchIndex)
         
         
-        # Flatten the output
+        # Flatten the last CNN output
         # get the Feature Map Output Pools into the format [batch,OutputVectors] which should be a 5 x 6 for a batch size of 5 and a feature map size of 6.
         featureMapSize = (self.myCNNLayers[len(self.myCNNLayers) - 1].poolOutputSize)**2
         flattenSize = (featureMapSize) * self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps
@@ -90,7 +91,7 @@ class Network(object):
             self.Flatten[bIndex] = flatFM
 
 
-        # Normal NN Layers
+        # Normal NN Layers' Execution
         currBatch = self.Flatten
         self.Layers[0].Evaluate(currBatch,doBatchNorm,batchType)
         for i in range(1,self.numOfLayers):
@@ -98,6 +99,7 @@ class Network(object):
         return self.Layers[self.numOfLayers - 1].a
 
     def BackProp(self,batch_x,batch_y,layerNumber,batchSize,doBatchNorm,batchType):
+        # Normal NN Layers' Back Prop
         layer = self.Layers[layerNumber]
         if (layerNumber == (self.numOfLayers - 1)): #last layer
             if (layer.activationType == ActivationType.SOFTMAX):
@@ -106,9 +108,31 @@ class Network(object):
                 layer.CalcDeltaLL(batch_y, batchSize, doBatchNorm, batchType) #last layer
         else:
             layer.CalcDelta(self.Layers[layerNumber + 1].deltabn, self.Layers[layerNumber + 1].w, batchSize, doBatchNorm, batchType)
+        
+    def CNNBackProp(self,layerNumber):
+        # CNN Layers' Back Prop
+        # Remember to do for each element of the batch.
+        # Add gradients together later.
+        if (layerNumber == (self.numOfCNNLayers - 1)):
+            deltaFlatten = self.Layers[0].CalcDeltaFlatten()
+            currCNNLayer = self.myCNNLayers[self.numOfCNNLayers - 1]
+            currNumFeatureMaps = currCNNLayer.numFeatureMaps
+            poolOutputSize = currCNNLayer.poolOutputSize
+            pool2 = poolOutputSize**2
+            #res = np.zeros((self.batchSize,currNumFeatureMaps,poolOutputSize,poolOutputSize))
+            for i in range(0,self.batchSize):
+                for j in range(0,currNumFeatureMaps):
+                    #res[i,j] = deltaFlatten[i,j*pool2:j*pool2 + pool2].reshape(poolOutputSize,poolOutputSize)
+                    #Calc DeltaPool
+                    currCNNLayer.featureMapList[j].DeltaPool[i] = deltaFlatten[i,j*pool2:j*pool2 + pool2].reshape(poolOutputSize,poolOutputSize)
+                    test = "Pause"
+            #Calc DeltaCN
+            #Calc
+            
+
+            
             
     def Train(self,Epochs,LearningRate,doBatchNorm = False,lroptimization = LROptimizerType.NONE):
-
         for ep in range(0,Epochs):
             loss = 0
             itnum = 0
@@ -131,21 +155,30 @@ class Network(object):
                     # use mean square loss
                     loss += (0.5 * (batch_y - LLa)**2)
 
+                # Calc NN Deltas
                 layerNumber = self.numOfLayers - 1
                 while (layerNumber >= 0):
                     self.BackProp(batch_x,batch_y,layerNumber,self.batchSize,doBatchNorm,BatchNormMode.TRAIN)
                     self.CalcGradients(layerNumber,batch_x)
                     layerNumber -= 1
 
+                # Calc CNN Deltas
+                CNNLayerNumber = self.numOfCNNLayers - 1
+                while (CNNLayerNumber >= 0):
+                    self.CNNBackProp(CNNLayerNumber)
+                    CNNLayerNumber -= 1
+
                 itnum += 1
                 self.UpdateGradsBiases(LearningRate,self.batchSize,lroptimization,itnum,doBatchNorm)
             print("Epoch: " + str(ep) + ",   Loss: "+ str(loss))
     
     def CalcGradients(self,layerNumber,batch_x):
+        # Calculate NN Gradients
         if (layerNumber > 0):
             prevOut = self.Layers[layerNumber - 1].a
         else:
-            prevOut = batch_x
+            # prevOut = batch_x
+            prevOut = self.Flatten
         self.Layers[layerNumber].CalcGradients(prevOut)
 
 
