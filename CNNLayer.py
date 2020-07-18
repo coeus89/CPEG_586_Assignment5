@@ -21,7 +21,7 @@ class CNNLayer(object):
         # self.Kernels = numPrevLayerFeatureMaps,numFeatureMaps,kernelSize
         # self.KernelGrads = np.zeros((numPrevLayerFeatureMaps,numFeatureMaps))
         self.Kernels = np.empty((numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
-        self.KernelGrads = np.empty((numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
+        self.KernelGrads = np.zeros((numPrevLayerFeatureMaps,numFeatureMaps,kernelSize,kernelSize))
 
         # I don't think i need to init the 2d matrix for the kernels or the kernel grads
         # self.InitMatrix2DArray(self.Kernels,numPrevLayerFeatureMaps,numFeatureMaps,kernelSize)

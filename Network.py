@@ -6,6 +6,7 @@ from MyEnums import *
 from CNNLayer import *
 from CNNEnums import *
 from sklearn.utils import shuffle
+from scipy.signal import convolve2d
 
 class Network(object):
     def __init__(self,X,Y,numCNNLayers,kernelSize,poolingType,numLayers,dropout = 1.0, activationFunction = ActivationType.SIGMOID, lastLayerAF = ActivationType.SOFTMAX,batchSize = 1):
@@ -109,14 +110,17 @@ class Network(object):
         else:
             layer.CalcDelta(self.Layers[layerNumber + 1].deltabn, self.Layers[layerNumber + 1].w, batchSize, doBatchNorm, batchType)
         
-    def CNNBackProp(self,layerNumber):
+    def CNNBackProp(self,layerNumber,X_Data):
         # CNN Layers' Back Prop
         # Remember to do for each element of the batch.
         # Add gradients together later.
-        if (layerNumber == (self.numOfCNNLayers - 1)):
+        deltaFlatten = None
+        currCNNLayer = self.myCNNLayers[layerNumber]
+        currNumFeatureMaps = currCNNLayer.numFeatureMaps
+
+        if (layerNumber == (self.numOfCNNLayers - 1)): # Last CNN Layer requires unflattening first.
             deltaFlatten = self.Layers[0].CalcDeltaFlatten()
-            currCNNLayer = self.myCNNLayers[self.numOfCNNLayers - 1]
-            currNumFeatureMaps = currCNNLayer.numFeatureMaps
+            #currCNNLayer = self.myCNNLayers[self.numOfCNNLayers - 1]
             poolOutputSize = currCNNLayer.poolOutputSize
             pool2 = poolOutputSize**2
             #res = np.zeros((self.batchSize,currNumFeatureMaps,poolOutputSize,poolOutputSize))
@@ -125,9 +129,74 @@ class Network(object):
                     #res[i,j] = deltaFlatten[i,j*pool2:j*pool2 + pool2].reshape(poolOutputSize,poolOutputSize)
                     #Calc DeltaPool
                     currCNNLayer.featureMapList[j].DeltaPool[i] = deltaFlatten[i,j*pool2:j*pool2 + pool2].reshape(poolOutputSize,poolOutputSize)
-                    test = "Pause"
-            #Calc DeltaCN
-            #Calc
+        else:
+            temp = "Pause" #this needs to become the general case. Calc? the delta pool from previous layer.
+            #Get DeltaPool via convolution
+        #Calc DeltaCV
+        for i in range(0,self.batchSize):
+            for j in range(0,currNumFeatureMaps):
+                fmp = currCNNLayer.featureMapList[j]
+                fmp.DeltaCV[i] = np.zeros((fmp.OutputPool[i].shape[0] * 2, fmp.OutputPool[i].shape[1] * 2))
+                indexM = 0
+                indexN = 0
+                for m in range(0,fmp.DeltaPool[i].shape[0]):
+                    indexN = 0
+                    for n in range(0,fmp.DeltaPool[i].shape[1]):
+                        if (fmp.activationType == ActivationType.SIGMOID or fmp.activationType == ActivationType.TANH):
+                            fmp.DeltaCV[i,indexM,indexN] = (1/4.) * fmp.DeltaPool[i,m,n] * fmp.APrime[i,indexM,indexN]
+                            fmp.DeltaCV[i,indexM,indexN + 1] = (1/4.) * fmp.DeltaPool[i,m,n] * fmp.APrime[i,indexM,indexN + 1]
+                            fmp.DeltaCV[i,indexM + 1,indexN] = (1/4.) * fmp.DeltaPool[i,m,n] * fmp.APrime[i,indexM + 1,indexN]
+                            fmp.DeltaCV[i,indexM + 1,indexN + 1] = (1/4.) * fmp.DeltaPool[i,m,n] * fmp.APrime[i,indexM + 1,indexN + 1]
+                            indexN += 2
+                        if (fmp.activationType == ActivationType.RELU):
+                            if (fmp.Sum[i,indexM,indexN] > 0):
+                                fmp.DeltaCV[i,indexM,indexN] = (1/4.) * fmp.DeltaPool[i,m,n]
+                            else:
+                                fmp.DeltaCV[i,indexM,indexN] = 0
+                            if (fmp.Sum[i,indexM,indexN + 1] > 0):
+                                fmp.DeltaCV[i,indexM,indexN + 1] = (1/4.) * fmp.DeltaPool[i,m,n]
+                            else:
+                                fmp.DeltaCV[i,indexM,indexN + 1] = 0
+                            if (fmp.Sum[i,indexM + 1,indexN] > 0):
+                                fmp.DeltaCV[i,indexM + 1,indexN] = (1/4.) * fmp.DeltaPool[i,m,n]
+                            else:
+                                fmp.DeltaCV[i,indexM + 1,indexN] = 0
+                            if (fmp.Sum[i,indexM + 1,indexN + 1] > 0):
+                                fmp.DeltaCV[i,indexM + 1,indexN + 1] = (1/4.) * fmp.DeltaPool[i,m,n]
+                            else:
+                                fmp.DeltaCV[i,indexM + 1,indexN + 1] = 0
+                    indexM += 2
+            #Calc Gradients for bias.
+            for f in range(0,currNumFeatureMaps):
+                fmp = currCNNLayer.featureMapList[f]
+                for u in range(0, fmp.DeltaCV[i].shape[0]):
+                    for v in range(0, fmp.DeltaCV[i].shape[1]):
+                        fmp.BiasGradient += fmp.DeltaCV[i,u,v]
+            
+            #Calc Gradients for pxq kernels in the current layer
+            numFeaturesThisLayer = self.numCNNLayers[layerNumber]
+            numFeaturesPrevLayer = self.numCNNLayers[layerNumber-1]
+            if (layerNumber > 0): #not the first layer
+                # Find Gradients for Kernels
+                for p in range(0,numFeaturesPrevLayer):
+                    for q in range(0,numFeaturesThisLayer):
+                        #check this. Maybe break it up
+                        part1 = np.rot90(self.myCNNLayers[layerNumber - 1].featureMapList[p].OutputPool[i],2)
+                        part2 = self.myCNNLayers[layerNumber].featureMapList[q].DeltaCV[i]
+                        self.myCNNLayers[layerNumber].Kernels[p,q] = self.myCNNLayers[layerNumber].KernelGrads[p,q] + convolve2d(part1,part2,mode='valid',boundary='symm')       
+                # Find deltaPool for previous Layer
+                for p in range(0,numFeaturesPrevLayer):
+                    size = self.myCNNLayers[layerNumber - 1].featureMapList[p].OutputPool[i].shape[0]
+                    self.myCNNLayers[layerNumber - 1].featureMapList[p].DeltaPool[i] = np.zeros((size,size))
+                    for q in range(0,numFeaturesThisLayer):
+                        self.myCNNLayers[layerNumber - 1].featureMapList[p].DeltaPool[i] += convolve2d(self.myCNNLayers[layerNumber].featureMapList[p].DeltaCV[i],np.rot90(self.myCNNLayers[layerNumber].Kernels[p,q],2),mode='full',boundary='symm')
+            else:
+                # This is first layer attached to input
+                for p in range(0,numFeaturesPrevLayer):
+                    for q in range(0,numFeaturesThisLayer):
+                        #check this. Maybe break it up
+                        self.myCNNLayers[layerNumber].Kernels[p,q] = self.myCNNLayers[layerNumber].KernelGrads[p,q] + convolve2d(np.rot90(X_Data[i,1],2),self.myCNNLayers[layerNumber].featureMapList[q].DeltaCV[i],mode='valid',boundary='symm') 
+
             
 
             
@@ -165,7 +234,7 @@ class Network(object):
                 # Calc CNN Deltas
                 CNNLayerNumber = self.numOfCNNLayers - 1
                 while (CNNLayerNumber >= 0):
-                    self.CNNBackProp(CNNLayerNumber)
+                    self.CNNBackProp(CNNLayerNumber,batch_x)
                     CNNLayerNumber -= 1
 
                 itnum += 1
