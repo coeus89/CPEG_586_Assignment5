@@ -11,8 +11,8 @@ class CNNLayer(object):
         self.kernelSize = kernelSize
         self.numFeatureMaps = numFeatureMaps
         self.numPrevLayerFeatureMaps = numPrevLayerFeatureMaps
-        self.ConvolResults = np.empty((batchSize,numPrevLayerFeatureMaps,numFeatureMaps),dtype=object)
         self.convOutputSize = inputSize - kernelSize + 1
+        self.ConvolResults = np.zeros((batchSize,numPrevLayerFeatureMaps,numFeatureMaps,self.convOutputSize,self.convOutputSize))
         self.poolOutputSize = (int)(self.convOutputSize / 2)
         for i in range(0,batchSize):
             for j in range(0,numFeatureMaps):
@@ -31,6 +31,12 @@ class CNNLayer(object):
         self.featureMapList = []
         for i in range(0,numFeatureMaps):
             self.featureMapList.append(FeatureMap(self.convOutputSize,poolingType,activationType,batchSize))
+
+    def ClearKernelGrads(self):
+        self.KernelGrads = np.zeros((self.numPrevLayerFeatureMaps,self.numFeatureMaps,self.kernelSize,self.kernelSize))
+        for i in range(0,len(self.featureMapList)):
+                fmp = self.featureMapList[i]
+                fmp.BiasGradient = 0
 
     def Evaluate(self,PrevLayerOutputList,batchIndex):
         # inputs are from the previous layer (unless first layer)

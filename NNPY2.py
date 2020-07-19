@@ -33,7 +33,7 @@ def main():
     trainX = train#.reshape(train.shape[0],train.shape[1]*train.shape[2])
     testX = test#.reshape(test.shape[0],test.shape[1]*test.shape[2])
 
-    numCNNLayers = [4,6] # Number of deep cnn layers & neurons
+    numCNNLayers = [6,12] # Number of deep cnn layers & neurons
     numLayers = [50,10] # Number of classification layers & neurons
 
     dropOut = 1.0 #20% dropout
@@ -45,8 +45,8 @@ def main():
 
     myNetwork = Network(trainX,trainY,numCNNLayers,kernelSize,poolingType,numLayers,dropOut,hiddinActivation,LLActivation,batchSize)
 
-    epochs = 4
-    learningRate = 0.01  
+    epochs = 30
+    learningRate = 0.1
     #lambda1 = 0. #don't use. not sure why it's there.
     #trainType = GradDescType.MiniBatch
     
@@ -60,9 +60,11 @@ def main():
     print("Finished Training. \nTesting Begins")
 
     accuracyCount = 0
+    testX = testX.reshape(testX.shape[0],1,1,testX.shape[1],testX.shape[2])
+
     for i in range(testY.shape[0]):
-        a2 = myNetwork.Evaluate(testX[i],doBatchNorm,BatchNormMode.TEST)
-        maxindex = a2.argmax(axis = 0)
+        a2 = myNetwork.Evaluate(testX[i],1,doBatchNorm,BatchNormMode.TEST)
+        maxindex = a2[0].argmax(axis = 0)
         if (testY[i,maxindex] == 1):
             accuracyCount = accuracyCount + 1
     print("Accuracy count = " + str(accuracyCount/testY.shape[0]*100) + '%')

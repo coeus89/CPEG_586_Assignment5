@@ -104,7 +104,7 @@ class Layer(object):
         return ex
     
     
-    def CalcAdam(self,itnum,learningRate,batchSize,doBatchNorm,Beta1 = 0.9,Beta2 = 0.999,epsilon = 1e-6):
+    def CalcAdam(self, itnum, learningRate, batchSize, doBatchNorm, Beta1 = 0.9, Beta2 = 0.999, epsilon = 1e-6):
         self.mtw = Beta1 * self.mtw + (1 - Beta1)*self.gradw
         self.mtb = Beta1 * self.mtb + (1 - Beta1)*self.gradb
         self.vtw = Beta2 * self.vtw + (1 - Beta2)*self.gradw*self.gradw
@@ -120,52 +120,51 @@ class Layer(object):
 
         if (doBatchNorm == True):
             self.UpdateBetaGamma(learningRate)
-        
     
-    def GetBatchMeanVar(self,indata):
+    def UpdateWb(self, learningRate, batchSize, doBatchNorm):
+        self.w = self.w - learningRate * (1/batchSize) * self.gradw #- learningRate * lambda1 * self.w.sum()
+        self.b = self.b - learningRate * (1/batchSize) * self.gradb
+        if (doBatchNorm == True):
+            self.UpdateBetaGamma(learningRate)
+    
+    def GetBatchMeanVar(self, indata):
         self.BatchMean = np.mean(indata,axis=0)
         self.BatchVariance = np.var(indata,axis=0)
         self.runningMean = 0.9 * self.runningMean + (1.0 - 0.9) * self.BatchMean
         self.runningVariance = 0.9 * self.runningVariance + (1.0 - 0.9) * self.BatchVariance
 
-    def SoftMaxDeltaLL(self,batch_y,batchSize,doBatchNorm,batchType): #Last Layer
+    def SoftMaxDeltaLL(self, batch_y, batchSize, doBatchNorm, batchType): #Last Layer
         self.delta = self.a - batch_y
         if (doBatchNorm == True):
             self.CalcBatchBackProp(batchSize,doBatchNorm,batchType)
         else:
             self.deltabn = self.delta
     
-    def CalcDeltaLL(self,batch_y,batchSize,doBatchNorm,batchType): #Last Layer
+    def CalcDeltaLL(self, batch_y, batchSize, doBatchNorm, batchType): #Last Layer
         self.delta = -(batch_y - self.a) * self.derivAF
         if (doBatchNorm == True):
             self.CalcBatchNormBackProp(self.delta,batchSize,doBatchNorm,batchType)
         else:
             self.deltabn = self.delta
 
-    def CalcDelta(self,delta_NextLayer,W_NextLayer,batchSize,doBatchNorm,batchType): #other layers
+    def CalcDelta(self, delta_NextLayer, W_NextLayer, batchSize, doBatchNorm, batchType): #other layers
         self.delta = np.dot(delta_NextLayer,W_NextLayer) * self.derivAF
         if (doBatchNorm == True):
             self.CalcBatchBackProp(batchSize,doBatchNorm,batchType)
         else:
             self.deltabn = self.delta
             
-    def CalcBatchBackProp(self,batchSize,doBatchNorm,batchType):
+    def CalcBatchBackProp(self, batchSize, doBatchNorm, batchType):
         self.dgamma = np.sum(self.delta * self.sihat,axis=0)
         self.dbeta = np.sum(self.delta,axis=0)
         self.deltabn = (self.delta * self.gamma) / (batchSize * np.sqrt(self.BatchVariance + Layer.Epsillon)) * (batchSize - 1 - (self.sihat * self.sihat))
 
-    def CalcGradients(self,prevOut):
+    def CalcGradients(self, prevOut):
         self.gradw = np.dot(self.deltabn.T,prevOut)
         self.gradb = self.deltabn.sum(axis=0)
         #it shouldnt matter if it's batch norm or not because we set deltabn = delta in CalcDelta method
 
-    def UpdateWb(self, learningRate, batchSize,doBatchNorm):
-        self.w = self.w - learningRate * (1/batchSize) * self.gradw #- learningRate * lambda1 * self.w.sum()
-        self.b = self.b - learningRate * (1/batchSize) * self.gradb
-        if (doBatchNorm == True):
-            self.UpdateBetaGamma(learningRate)
-
-    def UpdateBetaGamma(self,learningRate): #only for batch norm
+    def UpdateBetaGamma(self, learningRate): #only for batch norm
         self.beta = self.beta - learningRate * self.dbeta
         self.gamma = self.gamma - learningRate * self.dgamma
     

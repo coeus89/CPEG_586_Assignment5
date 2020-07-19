@@ -56,7 +56,7 @@ class Network(object):
             self.NNInputSize = (self.NNInputSize - kernelSize + 1)/2 # Make sure the 3nd iteration is 4
         self.NNInputSize = (self.NNInputSize**2) * numCNNLayers[len(numCNNLayers)-1] #for 2 layers it should be 4 * 4 * 6 if six feature maps
     
-    def Evaluate(self,batch,doBatchNorm=False,batchType=BatchNormMode.TEST):
+    def Evaluate(self,batch,batchSize,doBatchNorm=False,batchType=BatchNormMode.TEST):
         # Evaluate CNN Layers
         # Note: batch is in format [batchSize,prevFeatureMaps,FeatureMapWidth,FeatureMapHeight]
         # prevFeatureMaps may just be the single image. so will be 1 on first layer.
@@ -65,14 +65,16 @@ class Network(object):
             if (j == 0):
                 PrevOut = batch 
             else:
-                PrevOut = np.empty((self.batchSize, self.myCNNLayers[j-1].numFeatureMaps),dtype=object)
+                poolOutputSize = self.myCNNLayers[j - 1].poolOutputSize
+                PrevOut = np.zeros((batchSize, self.myCNNLayers[j-1].numFeatureMaps,poolOutputSize,poolOutputSize))
                 for k in range(0,len(self.myCNNLayers[j-1].featureMapList)): # select Feature Map
                     BatchFeatureMapOut = self.myCNNLayers[j - 1].featureMapList[k].OutputPool
-                    for m in range(0, len(BatchFeatureMapOut)): # This puts the prevOut in the format [batch,featureMapOutput] for a batch of 5 and 4 feature maps it will be 5x4x12x12
+                    #for m in range(0, len(BatchFeatureMapOut)): # This puts the prevOut in the format [batch,featureMapOutput] for a batch of 5 and 4 feature maps it will be 5x4x12x12
+                    for m in range(0, batchSize): # This puts the prevOut in the format [batch,featureMapOutput] for a batch of 5 and 4 feature maps it will be 5x4x12x12
                         PrevOut[m,k] = BatchFeatureMapOut[m]
                 
             # For each item in batch evaluate
-            for n in range(0,self.batchSize):
+            for n in range(0,batchSize):
                 batchIndex = n
                 PreviousOutput = PrevOut[batchIndex]
                 self.myCNNLayers[j].Evaluate(PreviousOutput,batchIndex)
@@ -82,8 +84,8 @@ class Network(object):
         # get the Feature Map Output Pools into the format [batch,OutputVectors] which should be a 5 x 6 for a batch size of 5 and a feature map size of 6.
         featureMapSize = (self.myCNNLayers[len(self.myCNNLayers) - 1].poolOutputSize)**2
         flattenSize = (featureMapSize) * self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps
-        self.Flatten = np.zeros((self.batchSize,flattenSize))
-        for bIndex in range(0,self.batchSize):
+        self.Flatten = np.zeros((batchSize,flattenSize))
+        for bIndex in range(0,batchSize):
             flatFM = []
             for fmIndex in range(0,self.myCNNLayers[len(self.myCNNLayers) - 1].numFeatureMaps):
                 fm = self.myCNNLayers[len(self.myCNNLayers) - 1].featureMapList[fmIndex].OutputPool[bIndex]
@@ -183,23 +185,25 @@ class Network(object):
                         #check this. Maybe break it up
                         part1 = np.rot90(self.myCNNLayers[layerNumber - 1].featureMapList[p].OutputPool[i],2)
                         part2 = self.myCNNLayers[layerNumber].featureMapList[q].DeltaCV[i]
-                        self.myCNNLayers[layerNumber].Kernels[p,q] = self.myCNNLayers[layerNumber].KernelGrads[p,q] + convolve2d(part1,part2,mode='valid',boundary='symm')       
+                        self.myCNNLayers[layerNumber].KernelGrads[p,q] = self.myCNNLayers[layerNumber].KernelGrads[p,q] + convolve2d(part1,part2,mode='valid',boundary='symm')       
                 # Find deltaPool for previous Layer
                 for p in range(0,numFeaturesPrevLayer):
                     size = self.myCNNLayers[layerNumber - 1].featureMapList[p].OutputPool[i].shape[0]
                     self.myCNNLayers[layerNumber - 1].featureMapList[p].DeltaPool[i] = np.zeros((size,size))
                     for q in range(0,numFeaturesThisLayer):
-                        self.myCNNLayers[layerNumber - 1].featureMapList[p].DeltaPool[i] += convolve2d(self.myCNNLayers[layerNumber].featureMapList[p].DeltaCV[i],np.rot90(self.myCNNLayers[layerNumber].Kernels[p,q],2),mode='full',boundary='symm')
+                        # Prev Layer DeltaPool
+                        part1 = self.myCNNLayers[layerNumber].featureMapList[p].DeltaCV[i]
+                        part2 = np.rot90(self.myCNNLayers[layerNumber].Kernels[p,q],2)
+                        self.myCNNLayers[layerNumber - 1].featureMapList[p].DeltaPool[i] += convolve2d(part1,part2,mode='full',boundary='symm')
             else:
                 # This is first layer attached to input
-                for p in range(0,numFeaturesPrevLayer):
+                for p in range(0,1):
                     for q in range(0,numFeaturesThisLayer):
-                        #check this. Maybe break it up
-                        self.myCNNLayers[layerNumber].Kernels[p,q] = self.myCNNLayers[layerNumber].KernelGrads[p,q] + convolve2d(np.rot90(X_Data[i,1],2),self.myCNNLayers[layerNumber].featureMapList[q].DeltaCV[i],mode='valid',boundary='symm') 
-
-            
-
-            
+                        # check this. Maybe break it up
+                        # The first layer is just the input. Just figuring out the kernelgrads
+                        part1 = np.rot90(X_Data[i,0],2)
+                        part2 = self.myCNNLayers[layerNumber].featureMapList[q].DeltaCV[i]
+                        self.myCNNLayers[layerNumber].KernelGrads[p,q] += convolve2d(part1,part2,mode='valid',boundary='symm') 
             
     def Train(self,Epochs,LearningRate,doBatchNorm = False,lroptimization = LROptimizerType.NONE):
         for ep in range(0,Epochs):
@@ -215,7 +219,7 @@ class Network(object):
                 # Need to add the 1 into the array so that the CNN likes the shape
                 batch_x = batch_x.reshape(batch_x.shape[0],1,batch_x.shape[1],batch_x.shape[2])
                 #batch_y = batch_y.reshape(batch_y.shape[0],1,batch_y.shape[1],batch_y.shape[2])
-                LLa = self.Evaluate(batch_x,doBatchNorm,BatchNormMode.TRAIN) # Last Layer 'a' value
+                LLa = self.Evaluate(batch_x,self.batchSize,doBatchNorm,BatchNormMode.TRAIN) # Last Layer 'a' value
                 
                 if (self.lastLayerAF == ActivationType.SOFTMAX):
                     # Use cross entropy loss
@@ -239,6 +243,8 @@ class Network(object):
 
                 itnum += 1
                 self.UpdateGradsBiases(LearningRate,self.batchSize,lroptimization,itnum,doBatchNorm)
+                self.UpdateCNNKernelsBiases(LearningRate,self.batchSize)
+                self.clearCNNGradients()
             print("Epoch: " + str(ep) + ",   Loss: "+ str(loss))
     
     def CalcGradients(self,layerNumber,batch_x):
@@ -261,4 +267,21 @@ class Network(object):
                 self.Layers[ln].UpdateWb(learningRate, batchSize,doBatchNorm)
             elif (LROptimization == LROptimizerType.ADAM):
                 self.Layers[ln].CalcAdam(itnum,learningRate,batchSize,doBatchNorm,beta1,beta2,epsilon)
-
+    
+    def UpdateCNNKernelsBiases(self, learningRate, batchSize):
+        for cnnCount in range(0,len(self.numCNNLayers)):
+            if (cnnCount == 0):
+                for p in range(0,1):
+                    for q in range(0,len(self.myCNNLayers[0].featureMapList)):
+                        self.myCNNLayers[cnnCount].Kernels[p,q] -= self.myCNNLayers[cnnCount].KernelGrads[p,q] * (1./batchSize) * learningRate
+            else:
+                for p in range (0,len(self.myCNNLayers[cnnCount - 1].featureMapList)):
+                    for q in range(0,len(self.myCNNLayers[cnnCount].featureMapList)):
+                        self.myCNNLayers[cnnCount].Kernels[p,q] -= self.myCNNLayers[cnnCount].KernelGrads[p,q] * (1./batchSize) * learningRate
+            for i in range(0,len(self.myCNNLayers[cnnCount].featureMapList)):
+                fmp = self.myCNNLayers[cnnCount].featureMapList[i]
+                fmp.Bias -= fmp.BiasGradient * (1./batchSize) * learningRate
+    
+    def clearCNNGradients(self):
+        for cnnCount in range(0,len(self.numCNNLayers)):
+            self.myCNNLayers[cnnCount].ClearKernelGrads()
