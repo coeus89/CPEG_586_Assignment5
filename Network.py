@@ -74,8 +74,7 @@ class Network(object):
                         PrevOut[m,k] = BatchFeatureMapOut[m]
                 
             # For each item in batch evaluate
-            for n in range(0,batchSize):
-                batchIndex = n
+            for batchIndex in range(0,batchSize):
                 PreviousOutput = PrevOut[batchIndex]
                 self.myCNNLayers[j].Evaluate(PreviousOutput,batchIndex)
         

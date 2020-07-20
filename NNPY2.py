@@ -33,11 +33,11 @@ def main():
     trainX = train#.reshape(train.shape[0],train.shape[1]*train.shape[2])
     testX = test#.reshape(test.shape[0],test.shape[1]*test.shape[2])
 
-    numCNNLayers = [6,12] # Number of deep cnn layers & neurons
+    numCNNLayers = [6,12] # Number of deep cnn layers
     numLayers = [50,10] # Number of classification layers & neurons
 
     dropOut = 1.0 #20% dropout
-    hiddinActivation = ActivationType.SIGMOID
+    hiddinActivation = ActivationType.RELU
     LLActivation = ActivationType.SOFTMAX
     kernelSize = 5
     poolingType = PoolingType.AVGPOOLING
