@@ -6,14 +6,20 @@ class ActivationFunction(object):
 
     @staticmethod
     def Sigmoid(s):
+        # a = np.zeros((s.shape[0],s.shape[1]))
+        # derivAF = np.zeros((s.shape[0],s.shape[1]))
+        # for x in range(0,s.shape[0]):
+        #     for y in range(0,s.shape[1]):
+        #         a[x,y] = 1.0/(1.0 + np.exp(-s[x,y]))
+        #         derivAF[x,y] = a[x,y] * (1. - a[x,y])
         a = 1.0/(1.0 + np.exp(-s))
-        derivAF = a * (1 - a)
+        derivAF = a * (1. - a)
         return a, derivAF
 
     @staticmethod
     def TanH(s):
         a = np.tanh(s)
-        derivAF = (1 - a ** 2)
+        derivAF = (1. - a ** 2)
         return a, derivAF
 
     @staticmethod
